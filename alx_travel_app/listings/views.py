@@ -6,7 +6,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from .models import Listing, Booking, Payment
 from .serializers import ListingSerializer, BookingSerializer, PaymentSerializer
-
+from .tasks import send_booking_confirmation_email
 
 class ListingViewSet(viewsets.ModelViewSet):
     """
@@ -15,14 +15,14 @@ class ListingViewSet(viewsets.ModelViewSet):
     queryset = Listing.objects.all()
     serializer_class = ListingSerializer
 
-
 class BookingViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing bookings.
-    """
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
 
+    def perform_create(self, serializer):
+        booking = serializer.save()
+        user_email = booking.user.email if hasattr(booking, "user") else "test@example.com"
+        send_booking_confirmation_email.delay(user_email, booking.id)
 
 
 # Payment Integration (Chapa API)
